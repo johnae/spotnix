@@ -1,0 +1,6 @@
+/target
+**/*.rs.bk
+.spotify_token_cache.json
+.envrc_user
+input
+output
