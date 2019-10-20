@@ -15,7 +15,7 @@ So what's so special about this then? Well, you get three named pipes and that's
 
 `./output` (results of a search, results of list devices etc.)
 
-`./events` (really just playback status atm such as progress, track name etc).
+`./event` (really just playback status atm such as progress, track name etc).
 
 ```sh
 echo search_playlist electronic > ./input
