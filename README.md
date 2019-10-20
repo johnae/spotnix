@@ -68,7 +68,7 @@ At the moment there's no packages so you'll have to build it. First, install [Ru
 cargo install spotnix
 ```
 
-Personally I use [Nix](https://nixos.org/nix) to manage dependencies, including the Rust toolchain, but I know [Rustup](https://rustup.rs/) is really good.
+Personally I use [Nix](https://nixos.org/nix) to manage dependencies, including the Rust toolchain, but I know [Rustup](https://rustup.rs/) is really good. You do need *openssl* installed for compilation.
 
 To update spotnix you can run
 
