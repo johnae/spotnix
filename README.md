@@ -97,7 +97,7 @@ When you start `spotnix` the first time, you will be asked to login to spotify B
 This is currently the help output of spotnix:
 
 ```sh
-spotnix 0.1.0
+spotnix 0.1.1
 spotify as a series of "tubes"... or rather named pipes.
 
 USAGE:
@@ -108,6 +108,7 @@ FLAGS:
     -V, --version    Prints version information
 
 OPTIONS:
+    -d, --device <device>    Default device to use by name
     -e, --event <event>      All events go here (a named pipe) [default: ./event]
     -i, --input <input>      All input goes here (a named pipe) [default: ./input]
     -o, --output <output>    All output goes here (a named pipe) [default: ./output]
