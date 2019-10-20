@@ -6,7 +6,7 @@ _It's really really early days so there's likely to be some rough edges, missing
 
 First, here's a taste of what a session might look like (spotnix on the left, on the right we search and select what to play):
 
-![spotnix](https://user-images.githubusercontent.com/28332/67158082-e4432c80-f333-11e9-8c5d-ac66655e3d06.gif)
+![spotnix](https://user-images.githubusercontent.com/28332/67158210-93343800-f335-11e9-93fc-45cafd964a8b.gif)
 
 
 So what's so special about this then? Well, you get three named pipes and that's it. What's not to like :-)? The standard names of those pipes:
