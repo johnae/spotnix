@@ -48,6 +48,9 @@ struct Opt {
     /// All events go here (a named pipe)
     #[structopt(short = "e", long = "event", default_value = "./event")]
     event: String,
+    /// Default device to use by name
+    #[structopt(short = "d", long = "device")]
+    device: Option<String>,
 }
 
 const SCOPES: [&str; 9] = [
@@ -65,7 +68,7 @@ const SCOPES: [&str; 9] = [
 struct Spotnix {
     spotify: Spotify,
     token_expiry: Instant,
-    device: String,
+    device: Option<String>,
     event: String,
     event_tx: Sender<Event>,
     input: String,
@@ -141,15 +144,6 @@ impl Spotnix {
 
         let (spotify, token_expiry) = new_spotify_client()?;
 
-        let device = spotify
-            .device()?
-            .devices
-            .into_iter()
-            .find(|device| device.name == "europa")
-            .expect("device europa not found")
-            .id;
-
-        info!("using device: {}", device);
         Ok(Self {
             spotify,
             token_expiry,
@@ -159,7 +153,7 @@ impl Spotnix {
             input_rx,
             output,
             output_tx,
-            device,
+            device: None,
         })
     }
 
@@ -194,7 +188,7 @@ impl Spotnix {
             Input::TokenRefresh => self.maybe_refresh_token()?,
             Input::Play => {
                 self.spotify
-                    .start_playback(Some(self.device.clone()), None, None, None, None)?;
+                    .start_playback(self.device.clone(), None, None, None, None)?;
             }
             Input::PlayTrack(track_id) => {
                 let track = self.spotify.track(&track_id)?;
@@ -216,13 +210,8 @@ impl Spotnix {
                         .collect();
                     tracks.append(more_uris);
                 }
-                self.spotify.start_playback(
-                    Some(self.device.clone()),
-                    None,
-                    Some(tracks),
-                    None,
-                    None,
-                )?;
+                self.spotify
+                    .start_playback(self.device.clone(), None, Some(tracks), None, None)?;
             }
             Input::PlayAlbum(album_id) => {
                 let album = self.spotify.album(&album_id)?;
@@ -232,7 +221,7 @@ impl Spotnix {
                     album_id, album.name, artists_str
                 );
                 self.spotify.start_playback(
-                    Some(self.device.clone()),
+                    self.device.clone(),
                     Some(album_id),
                     None,
                     None,
@@ -243,7 +232,7 @@ impl Spotnix {
                 let artist = self.spotify.artist(&artist_id)?;
                 info!("play artist id: {}, name: {}", artist_id, artist.name);
                 self.spotify.start_playback(
-                    Some(self.device.clone()),
+                    self.device.clone(),
                     Some(artist_id),
                     None,
                     None,
@@ -254,7 +243,7 @@ impl Spotnix {
                 let playlist = self.spotify.playlist(&playlist_id, None, None)?;
                 info!("play playlist id: {}, name: {}", playlist_id, playlist.name);
                 self.spotify.start_playback(
-                    Some(self.device.clone()),
+                    self.device.clone(),
                     Some(playlist_id),
                     None,
                     None,
@@ -262,7 +251,7 @@ impl Spotnix {
                 )?;
             }
             Input::Shuffle(state) => {
-                self.spotify.shuffle(state, Some(self.device.clone()))?;
+                self.spotify.shuffle(state, self.device.clone())?;
             }
             Input::PlaybackStatus => {
                 let status = self.spotify.current_playing(Some(Country::Sweden))?;
@@ -295,20 +284,20 @@ impl Spotnix {
                 self.output_tx.send(Output::SearchPlaylists(results))?;
             }
             Input::Device(id) => {
-                self.device = id;
+                self.device = Some(id);
             }
             Input::ListDevices => {
                 let results = self.spotify.device()?;
                 self.output_tx.send(Output::Devices(results.devices))?;
             }
             Input::Pause | Input::Stop => {
-                self.spotify.pause_playback(Some(self.device.clone()))?;
+                self.spotify.pause_playback(self.device.clone())?;
             }
             Input::Next => {
-                self.spotify.next_track(Some(self.device.clone()))?;
+                self.spotify.next_track(self.device.clone())?;
             }
             Input::Previous => {
-                self.spotify.previous_track(Some(self.device.clone()))?;
+                self.spotify.previous_track(self.device.clone())?;
             }
         };
         Ok(())
@@ -331,6 +320,21 @@ fn main() -> Result<()> {
         input_rx,
         output_tx.clone(),
     )?;
+
+    if let Some(device_name) = opt.device {
+        let device = spotnix
+            .spotify
+            .device()?
+            .devices
+            .into_iter()
+            .find(|device| device.name == device_name)
+            .expect(&format!("device '{}' not found", device_name))
+            .id;
+        info!("using device: {}", device);
+        spotnix.device = Some(device);
+    } else {
+        info!("no device given on cmdline, you must select one before you can play music");
+    }
 
     let f = OpenOptions::new()
         .read(true)
