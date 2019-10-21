@@ -1,6 +1,7 @@
 use log::{debug, error, info};
 use rspotify::spotify::client::Spotify;
 use rspotify::spotify::model::artist::SimplifiedArtist;
+use rspotify::spotify::model::context::SimplifiedPlayingContext;
 use rspotify::spotify::oauth2::{SpotifyClientCredentials, SpotifyOAuth};
 use rspotify::spotify::senum::Country;
 use rspotify::spotify::util::get_token;
@@ -75,6 +76,7 @@ struct Spotnix {
     input_rx: Receiver<Input>,
     output: String,
     output_tx: Sender<Output>,
+    status: Option<SimplifiedPlayingContext>,
 }
 
 fn new_spotify_client() -> Result<(Spotify, Instant)> {
@@ -154,6 +156,7 @@ impl Spotnix {
             output,
             output_tx,
             device: None,
+            status: None,
         })
     }
 
@@ -253,11 +256,21 @@ impl Spotnix {
             Input::Shuffle(state) => {
                 self.spotify.shuffle(state, self.device.clone())?;
             }
-            Input::PlaybackStatus => {
-                let status = self.spotify.current_playing(Some(Country::Sweden))?;
+            Input::PlaybackStatus(skew, update) => {
+                let status = if skew == update {
+                    self.status = self.spotify.current_playing(Some(Country::Sweden))?;
+                    self.status.clone()
+                } else {
+                    let mut status = self.status.clone();
+                    if let Some(ref mut status) = status {
+                        status.progress_ms =
+                            status.progress_ms.and_then(|v| Some(v + (1000 * skew)));
+                    };
+                    status
+                };
                 if let Some(status) = status {
                     self.event_tx.send(status.into())?;
-                }
+                };
             }
             Input::SearchTrack(search) => {
                 let results =
@@ -399,9 +412,15 @@ fn main() -> Result<()> {
     let timer = Timer::new();
     let _guard = {
         let in_tx = input_tx.clone();
-        timer.schedule_repeating(chrono::Duration::seconds(5), move || {
+        let mut count = 5;
+        timer.schedule_repeating(chrono::Duration::seconds(1), move || {
             let _ = in_tx.send(Input::TokenRefresh);
-            let _ = in_tx.send(Input::PlaybackStatus);
+            let _ = in_tx.send(Input::PlaybackStatus(count, 5));
+            if count < 5 {
+                count += 1;
+            } else {
+                count = 0;
+            }
         })
     };
 
