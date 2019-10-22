@@ -1,12 +1,14 @@
 use rspotify::spotify::model::context::SimplifiedPlayingContext;
+use serde::Serialize;
 use std::fmt;
 
+#[derive(Serialize)]
 pub enum Event {
     PlaybackStatus {
         progress_ms: u32,
         duration_ms: u32,
         track: String,
-        artists: String,
+        artists: Vec<String>,
         album: String,
     },
 }
@@ -28,12 +30,11 @@ impl From<SimplifiedPlayingContext> for Event {
                 Some(
                     t.artists
                         .iter()
-                        .map(|a| a.name.as_str())
-                        .collect::<Vec<&str>>()
-                        .join(", "),
+                        .map(|a| a.name.to_owned())
+                        .collect::<Vec<String>>(),
                 )
             })
-            .or(Some(String::from("Unknown")))
+            .or(Some(vec![String::from("Unknown")]))
             .unwrap();
         let album = fulltrack
             .and_then(|t| Some(t.album.name.clone()))
@@ -51,18 +52,7 @@ impl From<SimplifiedPlayingContext> for Event {
 
 impl fmt::Display for Event {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::PlaybackStatus {
-                progress_ms,
-                duration_ms,
-                track,
-                artists,
-                album,
-            } => write!(
-                f,
-                "PlaybackStatus #track:{} #album:{} #artists:{} #progress_ms:{} #duration_ms:{}",
-                track, album, artists, progress_ms, duration_ms
-            ),
-        }
+        let _ = write!(f, "{}", serde_json::to_string(self).unwrap());
+        Ok(())
     }
 }
