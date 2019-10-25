@@ -285,7 +285,7 @@ impl Spotnix {
             Input::SearchTrack(search) => {
                 let mut results = vec![];
                 let spotify = &self.spotify;
-                results.par_extend((1..self.max_pages).into_par_iter().flat_map(|i| {
+                results.par_extend((1..=self.max_pages).into_par_iter().flat_map(|i| {
                     if let Ok(stracks) = spotify.search_track(
                         search.as_str(),
                         50,
@@ -302,7 +302,7 @@ impl Spotnix {
             Input::SearchAlbum(search) => {
                 let mut results = vec![];
                 let spotify = &self.spotify;
-                results.par_extend((1..self.max_pages).into_par_iter().flat_map(|i| {
+                results.par_extend((1..=self.max_pages).into_par_iter().flat_map(|i| {
                     if let Ok(salbums) = spotify.search_album(
                         search.as_str(),
                         50,
@@ -319,7 +319,7 @@ impl Spotnix {
             Input::SearchArtist(search) => {
                 let mut results = vec![];
                 let spotify = &self.spotify;
-                results.par_extend((1..self.max_pages).into_par_iter().flat_map(|i| {
+                results.par_extend((1..=self.max_pages).into_par_iter().flat_map(|i| {
                     if let Ok(salbums) = spotify.search_artist(
                         search.as_str(),
                         50,
@@ -336,7 +336,7 @@ impl Spotnix {
             Input::SearchPlaylist(search) => {
                 let mut results = vec![];
                 let spotify = &self.spotify;
-                results.par_extend((1..self.max_pages).into_par_iter().flat_map(|i| {
+                results.par_extend((1..=self.max_pages).into_par_iter().flat_map(|i| {
                     if let Ok(splaylists) = spotify.search_playlist(
                         search.as_str(),
                         50,
