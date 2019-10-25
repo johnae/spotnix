@@ -7,6 +7,6 @@ fi
 
 echo sap "$@" > ./input
 
-cat ./output | sk | \
+sk < ./output | \
     awk '{print $NF}' | \
     xargs -r -I{} echo play {} > ./input

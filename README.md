@@ -15,7 +15,7 @@ So what's so special about this then? Well, you get three named pipes and that's
 
 `./output` (results of a search, results of list devices etc.)
 
-`./event` (really just playback status atm such as progress, track name etc).
+`./event` (really just playback status atm such as progress, track name etc). This is json.
 
 ```sh
 echo search_playlist electronic > ./input
@@ -39,7 +39,7 @@ To get playback status (eg. progress, name of song / album etc):
 cat ./event
 ```
 
-(The above updates every 5 seconds as it is, until then your `cat` will hang. Just `cat` again or read that pipe in a loop or whatever you like for updates.)
+(The above updates every 1 second. Just `cat` again or read that pipe in a loop or whatever you like for updates.)
 
 Obviously you'd probably put all the above things in scripts - but it's up to you how you use it, these are just building blocks - the Unix way. For some basic example scripts, see: [examples](examples/)
 
@@ -97,7 +97,7 @@ When you start `spotnix` the first time, you will be asked to login to spotify B
 This is currently the help output of spotnix:
 
 ```sh
-spotnix 0.1.1
+spotnix 0.1.2
 spotify as a series of "tubes"... or rather named pipes.
 
 USAGE:
@@ -112,6 +112,7 @@ OPTIONS:
     -e, --event <event>      All events go here (a named pipe) [default: ./event]
     -i, --input <input>      All input goes here (a named pipe) [default: ./input]
     -o, --output <output>    All output goes here (a named pipe) [default: ./output]
+    -r, --pages <pages>      Max number of search result pages to fetch (a page contains 50 items) [default: 4]
 ```
 
 So that is Spotify for Unix - you get to use all those command line tools you know and love to find and listen to music!

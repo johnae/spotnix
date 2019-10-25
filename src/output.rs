@@ -1,23 +1,24 @@
+use rspotify::spotify::model::album::SimplifiedAlbum;
+use rspotify::spotify::model::artist::FullArtist;
 use rspotify::spotify::model::device::Device;
-use rspotify::spotify::model::search::{
-    SearchAlbums, SearchArtists, SearchPlaylists, SearchTracks,
-};
+use rspotify::spotify::model::playlist::SimplifiedPlaylist;
+use rspotify::spotify::model::track::FullTrack;
 use std::fmt;
 
 pub enum Output {
-    SearchTracks(SearchTracks),
-    SearchAlbums(SearchAlbums),
-    SearchArtists(SearchArtists),
-    SearchPlaylists(SearchPlaylists),
+    SearchTracks(Vec<FullTrack>),
+    SearchAlbums(Vec<SimplifiedAlbum>),
+    SearchArtists(Vec<FullArtist>),
+    SearchPlaylists(Vec<SimplifiedPlaylist>),
     Devices(Vec<Device>),
 }
 
 impl fmt::Display for Output {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::SearchTracks(trackslist) => {
+            Self::SearchTracks(tracks) => {
                 let mut buf = String::with_capacity(500);
-                for item in trackslist.tracks.items.iter() {
+                for item in tracks.iter() {
                     let artists = item
                         .artists
                         .iter()
@@ -28,9 +29,9 @@ impl fmt::Display for Output {
                 }
                 write!(f, "{}", buf)
             }
-            Self::SearchAlbums(albumlist) => {
+            Self::SearchAlbums(albums) => {
                 let mut buf = String::with_capacity(100);
-                for item in albumlist.albums.items.iter() {
+                for item in albums.iter() {
                     let artists = item
                         .artists
                         .iter()
@@ -45,23 +46,23 @@ impl fmt::Display for Output {
                 }
                 write!(f, "{}", buf)
             }
-            Self::SearchArtists(artistslist) => {
+            Self::SearchArtists(artists) => {
                 let mut buf = String::with_capacity(100);
-                for item in artistslist.artists.items.iter() {
+                for item in artists.iter() {
                     buf.push_str(&format!("{} - {}\n", item.name, item.uri));
                 }
                 write!(f, "{}", buf)
             }
-            Self::SearchPlaylists(playlistslist) => {
+            Self::SearchPlaylists(playlists) => {
                 let mut buf = String::with_capacity(100);
-                for item in playlistslist.playlists.items.iter() {
+                for item in playlists.iter() {
                     buf.push_str(&format!("{} - {}\n", item.name, item.uri));
                 }
                 write!(f, "{}", buf)
             }
-            Self::Devices(devicelist) => {
+            Self::Devices(devices) => {
                 let mut buf = String::with_capacity(50);
-                for item in devicelist.iter() {
+                for item in devices.iter() {
                     buf.push_str(&format!("{} - {}\n", item.name, item.id));
                 }
                 write!(f, "{}", buf)

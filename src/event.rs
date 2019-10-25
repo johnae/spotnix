@@ -2,6 +2,8 @@ use rspotify::spotify::model::context::SimplifiedPlayingContext;
 use serde::Serialize;
 use std::fmt;
 
+// it IS constructed
+#[allow(dead_code)]
 #[derive(Serialize)]
 pub enum Event {
     PlaybackStatus {
@@ -22,7 +24,7 @@ impl From<SimplifiedPlayingContext> for Event {
             .or(Some(0))
             .unwrap();
         let track = fulltrack
-            .and_then(|t| Some(t.name.clone()))
+            .and_then(|t| Some(t.name.to_owned()))
             .or(Some(String::from("Unknown")))
             .unwrap();
         let artists = fulltrack
@@ -37,7 +39,7 @@ impl From<SimplifiedPlayingContext> for Event {
             .or(Some(vec![String::from("Unknown")]))
             .unwrap();
         let album = fulltrack
-            .and_then(|t| Some(t.album.name.clone()))
+            .and_then(|t| Some(t.album.name.to_owned()))
             .or(Some(String::from("Unknown")))
             .unwrap();
         Self::PlaybackStatus {

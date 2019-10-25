@@ -1,4 +1,5 @@
 use log::{debug, error, info};
+use rayon::prelude::*;
 use rspotify::spotify::client::Spotify;
 use rspotify::spotify::model::artist::SimplifiedArtist;
 use rspotify::spotify::model::context::SimplifiedPlayingContext;
@@ -9,7 +10,6 @@ use std::env;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::io::{BufRead, BufReader, BufWriter};
-use std::path::Path;
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::time::{Duration, Instant};
@@ -52,6 +52,9 @@ struct Opt {
     /// Default device to use by name
     #[structopt(short = "d", long = "device")]
     device: Option<String>,
+    /// Max number of search result pages to fetch (a page contains 50 items)
+    #[structopt(short = "r", long = "pages", default_value = "4")]
+    pages: u32,
 }
 
 const SCOPES: [&str; 9] = [
@@ -77,6 +80,7 @@ struct Spotnix {
     output: String,
     output_tx: Sender<Output>,
     status: Option<SimplifiedPlayingContext>,
+    max_pages: u32,
 }
 
 fn new_spotify_client() -> Result<(Spotify, Instant)> {
@@ -113,22 +117,23 @@ fn new_spotify_client() -> Result<(Spotify, Instant)> {
 }
 
 impl Spotnix {
-    fn new(
-        input: String,
-        output: String,
-        event: String,
+    fn new<S>(
+        input: S,
+        output: S,
+        event: S,
         event_tx: Sender<Event>,
         input_rx: Receiver<Input>,
         output_tx: Sender<Output>,
-    ) -> Result<Self> {
+        max_pages: u32,
+    ) -> Result<Self>
+    where
+        S: Into<String>,
+    {
         let mkpipe = |name: &str| {
-            if let Err(e) = std::fs::remove_file(&name) {
+            if let Err(e) = std::fs::remove_file(name) {
                 debug!("couldn't remove named pipe '{}': {}", name, e);
             }
-            let fifo = Path::new(name)
-                .to_str()
-                .expect("path couldn't be converted to string");
-            match unistd::mkfifo(fifo, stat::Mode::S_IRWXU) {
+            match unistd::mkfifo(name, stat::Mode::S_IRWXU) {
                 Ok(_) => println!("created fifo {}", name),
                 Err(err) => {
                     if err.as_errno() == Some(nix::errno::Errno::EEXIST) {
@@ -140,24 +145,27 @@ impl Spotnix {
             };
         };
 
-        mkpipe(&input);
-        mkpipe(&output);
-        mkpipe(&event);
-
         let (spotify, token_expiry) = new_spotify_client()?;
 
-        Ok(Self {
+        let spotnix = Self {
             spotify,
             token_expiry,
-            event,
+            event: event.into(),
             event_tx,
-            input,
+            input: input.into(),
             input_rx,
-            output,
+            output: output.into(),
             output_tx,
             device: None,
             status: None,
-        })
+            max_pages,
+        };
+
+        mkpipe(&spotnix.input);
+        mkpipe(&spotnix.output);
+        mkpipe(&spotnix.event);
+
+        Ok(spotnix)
     }
 
     fn run(&mut self) -> Result<()> {
@@ -263,8 +271,10 @@ impl Spotnix {
                 } else {
                     let mut status = self.status.clone();
                     if let Some(ref mut status) = status {
-                        status.progress_ms =
-                            status.progress_ms.and_then(|v| Some(v + (1000 * skew)));
+                        if status.is_playing {
+                            status.progress_ms =
+                                status.progress_ms.and_then(|v| Some(v + (1000 * skew)));
+                        };
                     };
                     status
                 };
@@ -273,30 +283,75 @@ impl Spotnix {
                 };
             }
             Input::SearchTrack(search) => {
-                let results =
-                    self.spotify
-                        .search_track(search.as_str(), 50, 0, Some(Country::Sweden))?;
+                let mut results = vec![];
+                let spotify = &self.spotify;
+                results.par_extend((1..self.max_pages).into_par_iter().flat_map(|i| {
+                    if let Ok(stracks) = spotify.search_track(
+                        search.as_str(),
+                        50,
+                        50 * (i - 1),
+                        Some(Country::Sweden),
+                    ) {
+                        stracks.tracks.items
+                    } else {
+                        vec![]
+                    }
+                }));
                 self.output_tx.send(Output::SearchTracks(results))?;
             }
             Input::SearchAlbum(search) => {
-                let results =
-                    self.spotify
-                        .search_album(search.as_str(), 50, 0, Some(Country::Sweden))?;
+                let mut results = vec![];
+                let spotify = &self.spotify;
+                results.par_extend((1..self.max_pages).into_par_iter().flat_map(|i| {
+                    if let Ok(salbums) = spotify.search_album(
+                        search.as_str(),
+                        50,
+                        50 * (i - 1),
+                        Some(Country::Sweden),
+                    ) {
+                        salbums.albums.items
+                    } else {
+                        vec![]
+                    }
+                }));
                 self.output_tx.send(Output::SearchAlbums(results))?;
             }
             Input::SearchArtist(search) => {
-                let results =
-                    self.spotify
-                        .search_artist(search.as_str(), 50, 0, Some(Country::Sweden))?;
+                let mut results = vec![];
+                let spotify = &self.spotify;
+                results.par_extend((1..self.max_pages).into_par_iter().flat_map(|i| {
+                    if let Ok(salbums) = spotify.search_artist(
+                        search.as_str(),
+                        50,
+                        50 * (i - 1),
+                        Some(Country::Sweden),
+                    ) {
+                        salbums.artists.items
+                    } else {
+                        vec![]
+                    }
+                }));
                 self.output_tx.send(Output::SearchArtists(results))?;
             }
             Input::SearchPlaylist(search) => {
-                let results =
-                    self.spotify
-                        .search_playlist(search.as_str(), 50, 0, Some(Country::Sweden))?;
+                let mut results = vec![];
+                let spotify = &self.spotify;
+                results.par_extend((1..self.max_pages).into_par_iter().flat_map(|i| {
+                    if let Ok(splaylists) = spotify.search_playlist(
+                        search.as_str(),
+                        50,
+                        50 * (i - 1),
+                        Some(Country::Sweden),
+                    ) {
+                        splaylists.playlists.items
+                    } else {
+                        vec![]
+                    }
+                }));
                 self.output_tx.send(Output::SearchPlaylists(results))?;
             }
             Input::Device(id) => {
+                self.spotify.transfer_playback(&id, false)?;
                 self.device = Some(id);
             }
             Input::ListDevices => {
@@ -332,6 +387,7 @@ fn main() -> Result<()> {
         event_tx.clone(),
         input_rx,
         output_tx.clone(),
+        opt.pages,
     )?;
 
     if let Some(device_name) = opt.device {
@@ -385,7 +441,6 @@ fn main() -> Result<()> {
                 if let Err(err) = res {
                     info!("failed to write to output: {}", err);
                 }
-                drop(bw);
             }
         }
     });
@@ -404,7 +459,6 @@ fn main() -> Result<()> {
                 if let Err(err) = res {
                     info!("failed to write to output: {}", err);
                 }
-                drop(bw);
             }
         }
     });
