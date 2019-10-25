@@ -64,7 +64,7 @@ pub enum Input {
     PlayArtist(String),
     PlayPlaylist(String),
     Play,
-    PlaybackStatus,
+    PlaybackStatus(u32, u32),
     SearchTrack(String),
     SearchAlbum(String),
     SearchArtist(String),
