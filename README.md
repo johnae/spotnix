@@ -60,6 +60,8 @@ next
 prev
 ```
 
+The search results are returned in pages with the spotify enforced maximum of 50 items. Since this tool is meant to be used on the command line and actual selection of what to play will likely happen from a newline delimited list of results (using tools like above mentioned `fzf` or `skim`), there's a command line option for setting the number of pages to fetch (default is 4). These pages are fetched concurrently using the awesome `rayon` crate.
+
 ### Installing
 
 At the moment there's no packages so you'll have to build it. First, install [Rust](https://www.rust-lang.org/tools/install) then
