@@ -7,6 +7,8 @@ description = "Spotify for Unix"
 repository = "https://github.com/johnae/spotnix"
 readme = "README.md"
 license = "MIT"
+keywords = ["cli", "spotify", "api", "audio", "terminal"]
+categories = ["command-line-utilities", "multimedia::audio"]
 
 [dependencies]
 rspotify = "0.7"
