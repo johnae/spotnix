@@ -1,25 +1,22 @@
+{ pkgs ? import <nixpkgs> { } }:
 let
-  pkgs = import ./nix { };
-  rustChannel = pkgs.latest.rustChannels.stable;
-
-  rust = rustChannel.rust.override {
-    extensions = [ "rust-src" "clippy-preview" "rustfmt-preview" ];
+  RUST_SRC_PATH = pkgs.stdenv.mkDerivation {
+    inherit (pkgs.rustc) src;
+    inherit (pkgs.rustc.src) name;
+    phases = [ "unpackPhase" "installPhase" ];
+    installPhase = "cp -r src $out";
   };
-
-  cargo = rustChannel.cargo;
-
 in
 pkgs.mkShell {
-  buildInputs = with pkgs; [
-    niv
-    rust
-    cargo
+  buildInputs = [
+    pkgs.rustc
+    pkgs.cargo
 
-    gcc
-    openssl
-    pkg-config
+    pkgs.gcc
+    pkgs.openssl
+    pkgs.pkg-config
 
-    skim
+    pkgs.skim
   ];
-  RUST_SRC_PATH = "${rustChannel.rust-src}/lib/rustlib/src/rust/src";
+  inherit RUST_SRC_PATH;
 }
