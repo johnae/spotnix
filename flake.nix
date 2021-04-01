@@ -4,11 +4,14 @@
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    fenix = {
+      url = "github:nix-community/fenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = { self, flake-utils, ... }@inputs:
     let
-      genAttrs' = values: f: builtins.listToAttrs (map f values);
       package = pkgs: {
         pname = "spotnix";
         version = "v0.1.3";
@@ -37,11 +40,16 @@
             config = {
               allowUnfree = true;
             };
+            overlays = [
+              inputs.fenix.overlay
+            ];
+          };
+          rustPlatform = nixpkgs.makeRustPlatform {
+            inherit (inputs.fenix.packages.${system}.minimal) cargo rustc;
           };
         in
         {
-
-          defaultPackage = nixpkgs.rustPlatform.buildRustPackage (package nixpkgs);
+          defaultPackage = rustPlatform.buildRustPackage (package nixpkgs);
           devShell = import ./shell.nix { inherit nixpkgs; };
 
         }
