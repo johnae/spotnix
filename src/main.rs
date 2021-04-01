@@ -272,8 +272,7 @@ impl Spotnix {
                     let mut status = self.status.clone();
                     if let Some(ref mut status) = status {
                         if status.is_playing {
-                            status.progress_ms =
-                                status.progress_ms.and_then(|v| Some(v + (1000 * skew)));
+                            status.progress_ms = status.progress_ms.map(|v| v + (1000 * skew));
                         };
                     };
                     status
@@ -381,13 +380,7 @@ fn main() -> Result<()> {
     let (event_tx, event_rx): (Sender<Event>, Receiver<Event>) = mpsc::channel();
 
     let mut spotnix = Spotnix::new(
-        opt.input,
-        opt.output,
-        opt.event,
-        event_tx.clone(),
-        input_rx,
-        output_tx.clone(),
-        opt.pages,
+        opt.input, opt.output, opt.event, event_tx, input_rx, output_tx, opt.pages,
     )?;
 
     if let Some(device_name) = opt.device {
@@ -465,7 +458,7 @@ fn main() -> Result<()> {
 
     let timer = Timer::new();
     let _guard = {
-        let in_tx = input_tx.clone();
+        let in_tx = input_tx;
         let mut count = 5;
         timer.schedule_repeating(chrono::Duration::seconds(1), move || {
             let _ = in_tx.send(Input::TokenRefresh);

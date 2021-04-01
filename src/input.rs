@@ -24,29 +24,29 @@ impl fmt::Display for SpotifyUri {
 impl FromStr for SpotifyUri {
     type Err = SpotnixError;
     fn from_str(s: &str) -> Result<Self> {
-        let mut uri_parts = s.split(":");
+        let mut uri_parts = s.split(':');
         match uri_parts.next() {
             Some("spotify") => match uri_parts.next() {
                 Some("track") => {
-                    if let Some(_) = uri_parts.next() {
+                    if uri_parts.next().is_some() {
                         return Ok(SpotifyUri::TrackUri(s.to_string()));
                     }
                     Err(SpotnixError::Parse(format!("bad spotify uri: {}", s)))
                 }
                 Some("album") => {
-                    if let Some(_) = uri_parts.next() {
+                    if uri_parts.next().is_some() {
                         return Ok(SpotifyUri::AlbumUri(s.to_string()));
                     }
                     Err(SpotnixError::Parse(format!("bad spotify uri: {}", s)))
                 }
                 Some("artist") => {
-                    if let Some(_) = uri_parts.next() {
+                    if uri_parts.next().is_some() {
                         return Ok(SpotifyUri::ArtistUri(s.to_string()));
                     }
                     Err(SpotnixError::Parse(format!("bad spotify uri: {}", s)))
                 }
                 Some("playlist") => {
-                    if let Some(_) = uri_parts.next() {
+                    if uri_parts.next().is_some() {
                         return Ok(SpotifyUri::PlaylistUri(s.to_string()));
                     }
                     Err(SpotnixError::Parse(format!("bad spotify uri: {}", s)))
@@ -88,10 +88,10 @@ impl FromStr for Input {
                 Some(part) => {
                     let uri: SpotifyUri = part.parse()?;
                     match uri {
-                        SpotifyUri::TrackUri(uri) => Ok(Input::PlayTrack(uri.to_string())),
-                        SpotifyUri::AlbumUri(uri) => Ok(Input::PlayAlbum(uri.to_string())),
-                        SpotifyUri::ArtistUri(uri) => Ok(Input::PlayArtist(uri.to_string())),
-                        SpotifyUri::PlaylistUri(uri) => Ok(Input::PlayPlaylist(uri.to_string())),
+                        SpotifyUri::TrackUri(uri) => Ok(Input::PlayTrack(uri)),
+                        SpotifyUri::AlbumUri(uri) => Ok(Input::PlayAlbum(uri)),
+                        SpotifyUri::ArtistUri(uri) => Ok(Input::PlayArtist(uri)),
+                        SpotifyUri::PlaylistUri(uri) => Ok(Input::PlayPlaylist(uri)),
                     }
                 }
                 _ => Ok(Input::Play),
@@ -138,7 +138,7 @@ impl FromStr for Input {
             }
             Some("devices") | Some("list_devices") | Some("ld") => Ok(Input::ListDevices),
             Some("device") | Some("d") => {
-                let what = cmd_parts.next().and_then(|s| Some(s.to_string()));
+                let what = cmd_parts.next().map(|s| s.to_string());
                 if let Some(id) = what {
                     return Ok(Input::Device(id));
                 }
