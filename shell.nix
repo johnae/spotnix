@@ -1,25 +1,19 @@
-let
-  pkgs = import ./nix { };
-  rustChannel = pkgs.latest.rustChannels.stable;
+{ nixpkgs }:
 
-  rust = rustChannel.rust.override {
-    extensions = [ "rust-src" "clippy-preview" "rustfmt-preview" ];
-  };
-
-  cargo = rustChannel.cargo;
-
-in
-pkgs.mkShell {
-  buildInputs = with pkgs; [
-    niv
-    rust
-    cargo
-
-    gcc
-    openssl
-    pkg-config
-
-    skim
+nixpkgs.mkShell {
+  buildInputs = [
+    (nixpkgs.rust-nightly.latest.withComponents [
+      "cargo"
+      "clippy-preview"
+      "rust-src"
+      "rust-std"
+      "rustc"
+      "rustfmt-preview"
+    ])
+    nixpkgs.rust-analyzer-nightly
+    nixpkgs.gcc
+    nixpkgs.openssl
+    nixpkgs.pkg-config
+    nixpkgs.skim
   ];
-  RUST_SRC_PATH = "${rustChannel.rust-src}/lib/rustlib/src/rust/src";
 }

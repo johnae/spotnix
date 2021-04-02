@@ -212,7 +212,7 @@ impl Spotnix {
                 let mut tracks = vec![track_id];
                 if let Some(album_id) = album.id {
                     let album = self.spotify.album(&album_id)?;
-                    let ref mut more_uris: Vec<String> = album
+                    let more_uris: &mut Vec<String> = &mut album
                         .tracks
                         .items
                         .into_iter()
@@ -272,8 +272,7 @@ impl Spotnix {
                     let mut status = self.status.clone();
                     if let Some(ref mut status) = status {
                         if status.is_playing {
-                            status.progress_ms =
-                                status.progress_ms.and_then(|v| Some(v + (1000 * skew)));
+                            status.progress_ms = status.progress_ms.map(|v| v + (1000 * skew));
                         };
                     };
                     status
@@ -381,13 +380,7 @@ fn main() -> Result<()> {
     let (event_tx, event_rx): (Sender<Event>, Receiver<Event>) = mpsc::channel();
 
     let mut spotnix = Spotnix::new(
-        opt.input,
-        opt.output,
-        opt.event,
-        event_tx.clone(),
-        input_rx,
-        output_tx.clone(),
-        opt.pages,
+        opt.input, opt.output, opt.event, event_tx, input_rx, output_tx, opt.pages,
     )?;
 
     if let Some(device_name) = opt.device {
@@ -397,7 +390,7 @@ fn main() -> Result<()> {
             .devices
             .into_iter()
             .find(|device| device.name == device_name)
-            .expect(&format!("device '{}' not found", device_name))
+            .unwrap_or_else(|| panic!("device '{}' not found", device_name))
             .id;
         info!("using device: {}", device);
         spotnix.device = Some(device);
@@ -465,7 +458,7 @@ fn main() -> Result<()> {
 
     let timer = Timer::new();
     let _guard = {
-        let in_tx = input_tx.clone();
+        let in_tx = input_tx;
         let mut count = 5;
         timer.schedule_repeating(chrono::Duration::seconds(1), move || {
             let _ = in_tx.send(Input::TokenRefresh);

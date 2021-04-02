@@ -20,27 +20,25 @@ impl From<SimplifiedPlayingContext> for Event {
         let progress_ms = status.progress_ms.or(Some(0)).unwrap();
         let fulltrack = status.item.as_ref();
         let duration_ms = fulltrack
-            .and_then(|track| Some(track.duration_ms))
+            .map(|track| track.duration_ms)
             .or(Some(0))
             .unwrap();
         let track = fulltrack
-            .and_then(|t| Some(t.name.to_owned()))
-            .or(Some(String::from("Unknown")))
+            .map(|t| t.name.to_owned())
+            .or_else(|| Some(String::from("Unknown")))
             .unwrap();
         let artists = fulltrack
-            .and_then(|t| {
-                Some(
-                    t.artists
-                        .iter()
-                        .map(|a| a.name.to_owned())
-                        .collect::<Vec<String>>(),
-                )
+            .map(|t| {
+                t.artists
+                    .iter()
+                    .map(|a| a.name.to_owned())
+                    .collect::<Vec<String>>()
             })
-            .or(Some(vec![String::from("Unknown")]))
+            .or_else(|| Some(vec![String::from("Unknown")]))
             .unwrap();
         let album = fulltrack
-            .and_then(|t| Some(t.album.name.to_owned()))
-            .or(Some(String::from("Unknown")))
+            .map(|t| t.album.name.to_owned())
+            .or_else(|| Some(String::from("Unknown")))
             .unwrap();
         Self::PlaybackStatus {
             progress_ms,
