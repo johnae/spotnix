@@ -1,5 +1,5 @@
 {
-  description = "Notmuch initial tagging";
+  description = "Spotnix - spotify as named pipes";
 
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
