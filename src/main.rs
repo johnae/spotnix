@@ -212,7 +212,7 @@ impl Spotnix {
                 let mut tracks = vec![track_id];
                 if let Some(album_id) = album.id {
                     let album = self.spotify.album(&album_id)?;
-                    let ref mut more_uris: Vec<String> = album
+                    let more_uris: &mut Vec<String> = &mut album
                         .tracks
                         .items
                         .into_iter()
