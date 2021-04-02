@@ -390,7 +390,7 @@ fn main() -> Result<()> {
             .devices
             .into_iter()
             .find(|device| device.name == device_name)
-            .expect(&format!("device '{}' not found", device_name))
+            .unwrap_or_else(|| panic!("device '{}' not found", device_name))
             .id;
         info!("using device: {}", device);
         spotnix.device = Some(device);
