@@ -2,15 +2,13 @@
   description = "Spotnix - spotify as named pipes";
 
   inputs = {
-    flake-utils.url = "github:numtide/flake-utils";
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     fenix = {
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { self, flake-utils, ... }@inputs:
+  outputs = { self, nixpkgs, fenix, ... }@inputs:
     let
       package = pkgs: {
         pname = "spotnix";
@@ -21,7 +19,7 @@
         nativeBuildInputs = [ pkgs.pkgconfig ];
         buildInputs = [ pkgs.openssl ];
         meta = {
-          license = pkgs.stdenv.lib.licenses.mit;
+          license = pkgs.lib.licenses.mit;
           maintainers = [
             {
               email = "john@insane.se";
@@ -31,32 +29,23 @@
           ];
         };
       };
+      supportedSystems = [ "x86_64-linux" "x86_64-darwin" ];
+      forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: f system);
     in
-    flake-utils.lib.eachDefaultSystem
-      (system:
-        let
-          nixpkgs = import inputs.nixpkgs {
-            localSystem = { inherit system; };
-            config = {
-              allowUnfree = true;
-            };
-            overlays = [
-              inputs.fenix.overlay
-            ];
-          };
-          rustPlatform = nixpkgs.makeRustPlatform {
-            inherit (inputs.fenix.packages.${system}.minimal) cargo rustc;
-          };
-        in
+      let
+        pkgs = forAllSystems (system: import inputs.nixpkgs {
+          localSystem = { inherit system; };
+          overlays = [ fenix.overlay ];
+        });
+        rustPlatform = forAllSystems (system: pkgs.${system}.makeRustPlatform {
+          inherit (fenix.packages.${system}.minimal) cargo rustc;
+        });
+      in
         {
-          defaultPackage = rustPlatform.buildRustPackage (package nixpkgs);
-          devShell = import ./shell.nix { inherit nixpkgs; };
-
-        }
-      ) // {
-      overlay = final: prev: {
-        spotnix = prev.rustPlatform.buildRustPackage (package prev);
-      };
-
-    };
+          overlay = final: prev: {
+            spotnix = prev.rustPlatform.buildRustPackage (package prev);
+          };
+          defaultPackage = forAllSystems (system: rustPlatform.${system}.buildRustPackage (package pkgs.${system}));
+          devShell = forAllSystems (system: import ./devshell.nix { pkgs = pkgs.${system}; });
+        };
 }
