@@ -14,7 +14,7 @@
         pname = "spotnix";
         version = "v0.1.3";
         src = self;
-        cargoSha256 = "sha256-tIZj+BdmJbRiSSWqY+JIDIShJ8wdLuIEWAb4c0m0MXw=";
+        cargoSha256 = "sha256-KyLcyn0kC/aGe7gOMwBF/RXPAXxpY0rhqMxMxoQ4M94=";
         doCheck = false;
         nativeBuildInputs = [ pkgs.pkgconfig ];
         buildInputs = [ pkgs.openssl ];
