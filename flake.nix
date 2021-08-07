@@ -10,6 +10,7 @@
 
   outputs = { self, nixpkgs, fenix, ... }@inputs:
     let
+      inherit (nixpkgs.lib) genAttrs;
       package = pkgs: {
         pname = "spotnix";
         version = "v0.1.3";
@@ -30,10 +31,10 @@
         };
       };
       supportedSystems = [ "x86_64-linux" "x86_64-darwin" ];
-      forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: f system);
+      forAllSystems = genAttrs supportedSystems;
     in
       let
-        pkgs = forAllSystems (system: import inputs.nixpkgs {
+        pkgs = forAllSystems (system: import nixpkgs {
           localSystem = { inherit system; };
           overlays = [ fenix.overlay ];
         });
