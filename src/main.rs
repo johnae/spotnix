@@ -26,8 +26,8 @@ use input::Input;
 mod output;
 use output::Output;
 
-mod event;
-use event::Event;
+mod playback_status;
+use playback_status::PlaybackStatus;
 
 use nix::sys::stat;
 use nix::unistd;
@@ -46,9 +46,9 @@ struct Opt {
     /// All input goes here (a named pipe)
     #[structopt(short = "i", long = "input", default_value = "./input")]
     input: String,
-    /// All events go here (a named pipe)
-    #[structopt(short = "e", long = "event", default_value = "./event")]
-    event: String,
+    /// Playback status goes here (a named pipe)
+    #[structopt(short = "s", long = "status", default_value = "./status")]
+    status: String,
     /// Default device to use by name
     #[structopt(short = "d", long = "device")]
     device: Option<String>,
@@ -73,13 +73,13 @@ struct Spotnix {
     spotify: Spotify,
     token_expiry: Instant,
     device: Option<String>,
-    event: String,
-    event_tx: Sender<Event>,
+    status: String,
+    status_tx: Sender<PlaybackStatus>,
     input: String,
     input_rx: Receiver<Input>,
     output: String,
     output_tx: Sender<Output>,
-    status: Option<SimplifiedPlayingContext>,
+    playing_context: Option<SimplifiedPlayingContext>,
     max_pages: u32,
 }
 
@@ -120,8 +120,8 @@ impl Spotnix {
     fn new<S>(
         input: S,
         output: S,
-        event: S,
-        event_tx: Sender<Event>,
+        status: S,
+        status_tx: Sender<PlaybackStatus>,
         input_rx: Receiver<Input>,
         output_tx: Sender<Output>,
         max_pages: u32,
@@ -150,20 +150,20 @@ impl Spotnix {
         let spotnix = Self {
             spotify,
             token_expiry,
-            event: event.into(),
-            event_tx,
+            status: status.into(),
+            status_tx,
             input: input.into(),
             input_rx,
             output: output.into(),
             output_tx,
             device: None,
-            status: None,
+            playing_context: None,
             max_pages,
         };
 
         mkpipe(&spotnix.input);
         mkpipe(&spotnix.output);
-        mkpipe(&spotnix.event);
+        mkpipe(&spotnix.status);
 
         Ok(spotnix)
     }
@@ -265,20 +265,23 @@ impl Spotnix {
                 self.spotify.shuffle(state, self.device.clone())?;
             }
             Input::PlaybackStatus(skew, update) => {
-                let status = if skew == update {
-                    self.status = self.spotify.current_playing(Some(Country::Sweden))?;
-                    self.status.clone()
+                let playing_context = if skew == update {
+                    self.playing_context = self.spotify.current_playing(Some(Country::Sweden))?;
+                    self.playing_context.clone()
                 } else {
-                    let mut status = self.status.clone();
-                    if let Some(ref mut status) = status {
-                        if status.is_playing {
-                            status.progress_ms = status.progress_ms.map(|v| v + (1000 * skew));
+                    let mut playing_context = self.playing_context.clone();
+                    if let Some(ref mut playing_context) = playing_context {
+                        if playing_context.is_playing {
+                            playing_context.progress_ms =
+                                playing_context.progress_ms.map(|v| v + (1000 * skew));
                         };
                     };
-                    status
+                    playing_context
                 };
-                if let Some(status) = status {
-                    self.event_tx.send(status.into())?;
+                if let Some(playing_context) = playing_context {
+                    self.status_tx.send(playing_context.into())?;
+                } else {
+                    self.status_tx.send(PlaybackStatus::default())?;
                 };
             }
             Input::SearchTrack(search) => {
@@ -377,10 +380,11 @@ fn main() -> Result<()> {
 
     let (input_tx, input_rx): (Sender<Input>, Receiver<Input>) = mpsc::channel();
     let (output_tx, output_rx): (Sender<Output>, Receiver<Output>) = mpsc::channel();
-    let (event_tx, event_rx): (Sender<Event>, Receiver<Event>) = mpsc::channel();
+    let (status_tx, status_rx): (Sender<PlaybackStatus>, Receiver<PlaybackStatus>) =
+        mpsc::channel();
 
     let mut spotnix = Spotnix::new(
-        opt.input, opt.output, opt.event, event_tx, input_rx, output_tx, opt.pages,
+        opt.input, opt.output, opt.status, status_tx, input_rx, output_tx, opt.pages,
     )?;
 
     if let Some(device_name) = opt.device {
@@ -438,14 +442,14 @@ fn main() -> Result<()> {
         }
     });
 
-    let event = spotnix.event.clone();
+    let status = spotnix.status.clone();
     thread::spawn(move || -> Result<()> {
         loop {
-            if let Ok(out) = event_rx.recv() {
+            if let Ok(out) = status_rx.recv() {
                 let f = OpenOptions::new()
                     .read(true) // keep it open
                     .write(true)
-                    .open(event.as_str())
+                    .open(status.as_str())
                     .expect("file not found");
                 let mut bw = BufWriter::new(f);
                 let res = bw.write_fmt(format_args!("{}", out.to_string()));

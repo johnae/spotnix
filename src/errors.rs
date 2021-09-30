@@ -1,4 +1,4 @@
-use crate::{Event, Input, Output};
+use crate::{Input, Output, PlaybackStatus};
 use derive_more::{Display, From};
 use std::str::ParseBoolError;
 
@@ -10,7 +10,7 @@ pub enum SpotnixError {
     Fail(failure::Error),
     SendOutput(std::sync::mpsc::SendError<Output>),
     SendInput(std::sync::mpsc::SendError<Input>),
-    SendEvent(std::sync::mpsc::SendError<Event>),
+    SendPlaybackStatus(std::sync::mpsc::SendError<PlaybackStatus>),
     Simple(&'static str),
 }
 
