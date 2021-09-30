@@ -76,6 +76,7 @@ struct Spotnix {
     status: String,
     status_tx: Sender<PlaybackStatus>,
     input: String,
+    input_tx: Sender<Input>,
     input_rx: Receiver<Input>,
     output: String,
     output_tx: Sender<Output>,
@@ -122,6 +123,7 @@ impl Spotnix {
         output: S,
         status: S,
         status_tx: Sender<PlaybackStatus>,
+        input_tx: Sender<Input>,
         input_rx: Receiver<Input>,
         output_tx: Sender<Output>,
         max_pages: u32,
@@ -153,6 +155,7 @@ impl Spotnix {
             status: status.into(),
             status_tx,
             input: input.into(),
+            input_tx,
             input_rx,
             output: output.into(),
             output_tx,
@@ -200,6 +203,7 @@ impl Spotnix {
             Input::Play => {
                 self.spotify
                     .start_playback(self.device.clone(), None, None, None, None)?;
+                self.input_tx.send(Input::PlaybackStatus(0, 0))?;
             }
             Input::PlayTrack(track_id) => {
                 let track = self.spotify.track(&track_id)?;
@@ -223,6 +227,7 @@ impl Spotnix {
                 }
                 self.spotify
                     .start_playback(self.device.clone(), None, Some(tracks), None, None)?;
+                self.input_tx.send(Input::PlaybackStatus(0, 0))?;
             }
             Input::PlayAlbum(album_id) => {
                 let album = self.spotify.album(&album_id)?;
@@ -238,6 +243,7 @@ impl Spotnix {
                     None,
                     None,
                 )?;
+                self.input_tx.send(Input::PlaybackStatus(0, 0))?;
             }
             Input::PlayArtist(artist_id) => {
                 let artist = self.spotify.artist(&artist_id)?;
@@ -249,6 +255,8 @@ impl Spotnix {
                     None,
                     None,
                 )?;
+
+                self.input_tx.send(Input::PlaybackStatus(0, 0))?;
             }
             Input::PlayPlaylist(playlist_id) => {
                 let playlist = self.spotify.playlist(&playlist_id, None, None)?;
@@ -260,9 +268,12 @@ impl Spotnix {
                     None,
                     None,
                 )?;
+
+                self.input_tx.send(Input::PlaybackStatus(0, 0))?;
             }
             Input::Shuffle(state) => {
                 self.spotify.shuffle(state, self.device.clone())?;
+                self.input_tx.send(Input::PlaybackStatus(0, 0))?;
             }
             Input::PlaybackStatus(skew, update) => {
                 let playing_context = if skew == update {
@@ -362,12 +373,15 @@ impl Spotnix {
             }
             Input::Pause | Input::Stop => {
                 self.spotify.pause_playback(self.device.clone())?;
+                self.input_tx.send(Input::PlaybackStatus(0, 0))?;
             }
             Input::Next => {
                 self.spotify.next_track(self.device.clone())?;
+                self.input_tx.send(Input::PlaybackStatus(0, 0))?;
             }
             Input::Previous => {
                 self.spotify.previous_track(self.device.clone())?;
+                self.input_tx.send(Input::PlaybackStatus(0, 0))?;
             }
         };
         Ok(())
@@ -384,7 +398,14 @@ fn main() -> Result<()> {
         mpsc::channel();
 
     let mut spotnix = Spotnix::new(
-        opt.input, opt.output, opt.status, status_tx, input_rx, output_tx, opt.pages,
+        opt.input,
+        opt.output,
+        opt.status,
+        status_tx,
+        input_tx.clone(),
+        input_rx,
+        output_tx,
+        opt.pages,
     )?;
 
     if let Some(device_name) = opt.device {
