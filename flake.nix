@@ -13,9 +13,9 @@
       inherit (nixpkgs.lib) genAttrs;
       package = pkgs: {
         pname = "spotnix";
-        version = "v0.1.3";
+        version = "v0.1.4";
         src = self;
-        cargoSha256 = "sha256-KyLcyn0kC/aGe7gOMwBF/RXPAXxpY0rhqMxMxoQ4M94=";
+        cargoSha256 = "sha256-cku0dbsGI0pAkcoBl+YxmwAIw2Gq+lruYyXet6OMyiA=";
         doCheck = false;
         nativeBuildInputs = [ pkgs.pkgconfig ];
         buildInputs = [ pkgs.openssl ];
