@@ -15,7 +15,7 @@ So what's so special about this then? Well, you get three named pipes and that's
 
 `./output` (results of a search, results of list devices etc.)
 
-`./event` (really just playback status atm such as progress, track name etc). This is json.
+`./status` (playback status such as progress, track name etc). This is json.
 
 ```sh
 echo search_playlist electronic > ./input
@@ -36,7 +36,7 @@ echo search_playlist electronic > ./input; cat ./output | sk | awk '{print $NF}'
 To get playback status (eg. progress, name of song / album etc):
 
 ```sh
-cat ./event
+cat ./status
 ```
 
 (The above updates every 1 second. Just `cat` again or read that pipe in a loop or whatever you like for updates.)
@@ -111,7 +111,7 @@ FLAGS:
 
 OPTIONS:
     -d, --device <device>    Default device to use by name
-    -e, --event <event>      All events go here (a named pipe) [default: ./event]
+    -s, --status <status>      All events go here (a named pipe) [default: ./status]
     -i, --input <input>      All input goes here (a named pipe) [default: ./input]
     -o, --output <output>    All output goes here (a named pipe) [default: ./output]
     -r, --pages <pages>      Max number of search result pages to fetch (a page contains 50 items) [default: 4]
