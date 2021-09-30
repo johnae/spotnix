@@ -465,8 +465,12 @@ fn main() -> Result<()> {
 
     let status = spotnix.status.clone();
     thread::spawn(move || -> Result<()> {
+        let mut playback_status: Option<PlaybackStatus> = None;
         loop {
-            if let Ok(out) = status_rx.recv() {
+            if let Ok(out) = status_rx.recv_timeout(Duration::from_millis(10)) {
+                playback_status = Some(out);
+            }
+            if let Some(ref out) = playback_status {
                 let f = OpenOptions::new()
                     .read(true) // keep it open
                     .write(true)
