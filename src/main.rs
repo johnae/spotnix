@@ -415,10 +415,8 @@ fn main() -> Result<()> {
             .devices
             .into_iter()
             .find(|device| device.name == device_name)
-            .unwrap_or_else(|| panic!("device '{}' not found", device_name))
-            .id;
-        info!("using device: {}", device);
-        spotnix.device = Some(device);
+            .map(|device| device.id);
+        spotnix.device = device;
     } else {
         info!("no device given on cmdline, you must select one before you can play music");
     }
