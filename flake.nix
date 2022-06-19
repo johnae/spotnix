@@ -88,7 +88,7 @@
     outputs
     // {
       overlays.default = final: prev: {
-        spotnix = self;
+        spotnix = self.packages.${prev.system}.spotnix;
       };
     }
     // (flake-utils.lib.eachDefaultSystem (system: let
