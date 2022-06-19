@@ -2,6 +2,16 @@
   description = "Spotnix - spotify as named pipes";
 
   inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
+    dream2nix = {
+      url = "github:nix-community/dream2nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    devshell = {
+      url = "github:numtide/devshell";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     fenix = {
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -10,47 +20,84 @@
 
   outputs = {
     self,
-    nixpkgs,
+    dream2nix,
+    flake-utils,
+    devshell,
     fenix,
-    ...
-  } @ inputs: let
-    inherit (nixpkgs.lib) genAttrs;
-    package = pkgs: {
-      pname = "spotnix";
-      version = "v0.1.4";
-      src = self;
-      cargoSha256 = "sha256-AHLNhehQn1B4sUsOj7wPKeFKjShF78v7V21aK9yfXyo=";
-      doCheck = false;
-      nativeBuildInputs = [pkgs.pkgconfig];
-      buildInputs = [pkgs.openssl];
-      meta = {
-        license = pkgs.lib.licenses.mit;
-        maintainers = [
-          {
-            email = "john@insane.se";
-            github = "johnae";
-            name = "John Axel Eriksson";
-          }
+    nixpkgs,
+  }: let
+    l = nixpkgs.lib // builtins;
+    pkgsFor = system:
+      import nixpkgs {
+        inherit system;
+        overlays = [
+          devshell.overlay
+          fenix.overlay
+          (
+            final: prev: let
+              fenixRust = final.fenix.complete;
+            in {
+              inherit fenixRust;
+              rustToolchain = fenixRust.withComponents [
+                "cargo"
+                "clippy"
+                "rust-src"
+                "rustc"
+                "rustfmt"
+              ];
+            }
+          )
         ];
       };
+
+    initD2N = pkgs:
+      dream2nix.lib.init {
+        inherit pkgs;
+        config.projectRoot = ./.;
+        config.disableIfdWarning = true;
+      };
+
+    makeOutputs = pkgs: let
+      outputs = (initD2N pkgs).makeOutputs {
+        source = ./.;
+        settings = [
+          {
+            builder = "crane";
+            translator = "cargo-lock";
+          }
+        ];
+        packageOverrides = {
+          "^.*".add-deps = {
+            nativeBuildInputs = old: old ++ [pkgs.pkgconfig];
+            buildInputs = old: old ++ [pkgs.openssl];
+            overrideRustToolchain = old: {
+              cargo = pkgs.fenixRust.toolchain;
+            };
+          };
+        };
+      };
+    in {
+      packages.${pkgs.system} = outputs.packages;
+      checks.${pkgs.system} = {
+        inherit (outputs.packages) spotnix;
+      };
     };
-    supportedSystems = ["x86_64-linux" "x86_64-darwin"];
-    forAllSystems = genAttrs supportedSystems;
-  in let
-    pkgs = forAllSystems (system:
-      import nixpkgs {
-        localSystem = {inherit system;};
-        overlays = [fenix.overlay];
-      });
-    rustPlatform = forAllSystems (system:
-      pkgs.${system}.makeRustPlatform {
-        inherit (fenix.packages.${system}.minimal) cargo rustc;
-      });
-  in {
-    overlay = final: prev: {
-      spotnix = prev.rustPlatform.buildRustPackage (package prev);
-    };
-    defaultPackage = forAllSystems (system: rustPlatform.${system}.buildRustPackage (package pkgs.${system}));
-    devShell = forAllSystems (system: import ./devshell.nix {pkgs = pkgs.${system};});
-  };
+    allOutputs = l.map makeOutputs (map pkgsFor flake-utils.lib.defaultSystems);
+    outputs = l.foldl' l.recursiveUpdate {} allOutputs;
+  in
+    outputs
+    // {
+      overlays.default = final: prev: {
+        spotnix = self;
+      };
+    }
+    // (flake-utils.lib.eachDefaultSystem (system: let
+      pkgs = pkgsFor system;
+    in {
+      devShells.default = pkgs.devshell.mkShell {
+        imports = [
+          (import ./devshell.nix {pkgs = pkgs;})
+        ];
+      };
+    }));
 }
