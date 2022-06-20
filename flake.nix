@@ -33,20 +33,6 @@
         overlays = [
           devshell.overlay
           fenix.overlay
-          (
-            final: prev: let
-              fenixRust = final.fenix.complete;
-            in {
-              inherit fenixRust;
-              rustToolchain = fenixRust.withComponents [
-                "cargo"
-                "clippy"
-                "rust-src"
-                "rustc"
-                "rustfmt"
-              ];
-            }
-          )
         ];
       };
 
@@ -70,9 +56,10 @@
           "^.*".add-deps = {
             nativeBuildInputs = old: old ++ [pkgs.pkgconfig];
             buildInputs = old: old ++ [pkgs.openssl];
-            overrideRustToolchain = old: {
-              cargo = pkgs.fenixRust.toolchain;
-            };
+            ## let's build with rustc/cargo from nixpkgs
+            # overrideRustToolchain = old: {
+            #   cargo = pkgs.fenix.complete.toolchain;
+            # };
           };
         };
       };
@@ -86,17 +73,12 @@
     outputs = l.foldl' l.recursiveUpdate {} allOutputs;
   in
     outputs
-    // {
-      overlays.default = final: prev: {
-        spotnix = self.packages.${prev.system}.spotnix;
-      };
-    }
     // (flake-utils.lib.eachDefaultSystem (system: let
       pkgs = pkgsFor system;
     in {
       devShells.default = pkgs.devshell.mkShell {
         imports = [
-          (import ./devshell.nix {pkgs = pkgs;})
+          (pkgs.devshell.importTOML ./devshell.toml)
         ];
       };
     }));
