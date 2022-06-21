@@ -72,7 +72,12 @@
     allOutputs = l.map makeOutputs (map pkgsFor flake-utils.lib.defaultSystems);
     outputs = l.foldl' l.recursiveUpdate {} allOutputs;
   in
-    outputs
+    {
+      overlays.default = final: prev: {
+        spotnix = self.packages.${prev.system}.spotnix;
+      };
+    }
+    // outputs
     // (flake-utils.lib.eachDefaultSystem (system: let
       pkgs = pkgsFor system;
     in {
