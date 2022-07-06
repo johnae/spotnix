@@ -53,9 +53,9 @@
           }
         ];
         packageOverrides = {
-          "^.*".add-deps = {
+          "^.*".addDeps = {
             nativeBuildInputs = old: old ++ [pkgs.pkgconfig];
-            buildInputs = old: old ++ [pkgs.openssl];
+            buildInputs = [pkgs.openssl];
             ## let's build with rustc/cargo from nixpkgs
             # overrideRustToolchain = old: {
             #   cargo = pkgs.fenix.complete.toolchain;
