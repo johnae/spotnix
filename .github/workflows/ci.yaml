@@ -15,5 +15,7 @@ jobs:
       with:
         extra_nix_config: |
           access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+          extra-substituters = https://spotnix.cachix.org
+          extra-trusted-public-keys = spotnix.cachix.org-1:nZRREPI6Zw9oqfuKctrDuIdoYw7R2vSy47tX0OgjgkY=
     - run: |
         nix build
