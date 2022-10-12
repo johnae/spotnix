@@ -54,7 +54,7 @@
         ];
         packageOverrides = {
           "^.*".addDeps = {
-            nativeBuildInputs = old: old ++ [pkgs.pkgconfig];
+            nativeBuildInputs = old: old ++ [pkgs.pkg-config];
             buildInputs = [pkgs.openssl];
             ## let's build with rustc/cargo from nixpkgs
             # overrideRustToolchain = old: {
